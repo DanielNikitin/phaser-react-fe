@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 
 import Copyright from '../components/Copyright';
 
-const socket = io('https://socketio-be-bx30.onrender.com');
+const socket = io('https://socketio-be-bx30.onrender.com');  // https://socketio-be-bx30.onrender.com
 
 const Chat = () => {
   const [name, setName] = useState('');
@@ -71,8 +71,8 @@ const Chat = () => {
 
     socket.on("animateRespect", () => {
       setAnimationCount((prevCount) => prevCount + 1);
-      setShowAnimation(true); // Показываем анимацию "+1"
-      setTimeout(() => setShowAnimation(false), 1000); // Скрытие анимации через 1 секунду
+      setShowAnimation(true);
+      setTimeout(() => setShowAnimation(false), 1000);
     });
 
     socket.on("changeTextColor", ({ colorId }) => {
