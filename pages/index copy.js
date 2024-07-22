@@ -2,15 +2,14 @@ import React, { useEffect, useLayoutEffect, useState } from 'react';
 import io from 'socket.io-client';
 import Copyright from '../components/Copyright';
 
-const socket = io('https://socketio-be-bx30.onrender.com');  // https://socketio-be-bx30.onrender.com  //  http://localhost:5000
+// Создаем сокет-клиент и подключаемся к серверу
+const socket = io('http://localhost:5000');
 
 const Chat = () => {
   const [name, setName] = useState('');
   const [status, setStatus] = useState('');
-
   const [serverStatus, setServerStatus] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState('');
-
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [users, setUsers] = useState([]);
   const [totalRespect, setTotalRespect] = useState(0);
@@ -21,52 +20,159 @@ const Chat = () => {
   const [animationCount, setAnimationCount] = useState(0);
 
 
-  // Запуск интервала проверки статуса сервера
-  useEffect(() => {
-    let updateInterval = null;
 
-    // This is 4 if SERVER IS OFFLINE
-    const handleServerStatus = (serverStatus) => {
-      console.log(`Server status received: ${serverStatus}`);
+
+
+
+
+
+
+
+
+
+  useLayoutEffect(() => {
+    socket.on('server-status', (serverStatus) => {
+      console.log(`SS 1 :: ${serverStatus}`);
       setServerStatus(serverStatus);
+    });
+
+    // Обработчики для состояния соединения
+    socket.on('connect', () => {
       setConnectionStatus('connected');
+      console.log('Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+      setConnectionStatus('disconnected');
+      console.log('Disconnected from server');
+    });
+
+    return () => {
+      socket.off('server-status');
+      socket.off('connect');
+      socket.off('disconnect');
+    };
+  }, []);
+
+
+  useLayoutEffect(() => {
+    console.log('first this');
+    let statusCheckInterval = null;
+
+    const checkServerStatus = () => {
+      if (serverStatus === '') {
+        console.log('server offline');
+        console.log(`SS 2 :: ${serverStatus}`);
+        statusCheckInterval = setTimeout(checkServerStatus, 1000);
+      }
     };
 
-    // This is 2 if SERVER IS OFFLINE
-    const startUpdateInterval = () => {
-      updateInterval = setInterval(() => {
-        console.log('Attempting to receive server status');
-        setConnectionStatus('reconnecting');
-        socket.emit('checkStatus');
-      }, 1000);
-    };
-
-    // This is 3 if SERVER IS OFFLINE
-    socket.on('server-status', handleServerStatus);
-
-    socket.on('connect_error', () => setConnectionStatus('Connection Error'));
-
-    // This start 1 if SERVER IS OFFLINE
     if (serverStatus === '') {
-      startUpdateInterval();
-      console.log('Starting update interval..');
+      socket.on('server-status', (serverStatus) => {
+      console.log('check status sended to server');
+      setServerStatus(serverStatus);
+    });
+      console.log(`SS 3 :: ${serverStatus}`);
+    } else if (serverStatus === 'online') {
+      console.log(`SS 4 :: ${serverStatus}`);
+      setServerStatus(serverStatus);
+
+      // Stop checking if server status is 'online'
+      if (statusCheckInterval) {
+        clearTimeout(statusCheckInterval);
+        statusCheckInterval = null;
+      }
     }
 
-    // Очистка интервала и обработчика событий при размонтировании компонента
     return () => {
-      if (updateInterval) {
-        console.log('clear interval');
-        clearInterval(updateInterval);
+      if (statusCheckInterval) {
+        clearTimeout(statusCheckInterval);
       }
-      socket.off('server-status', handleServerStatus);
     };
-  }, [serverStatus]); // Зависимость от serverStatus для перезапуска эффекта
+  }, [serverStatus]);
+
+
+
+--------------------------------------
+
+
+
+  
+
+
+  useLayoutEffect(() => {
+    // Обработчик для состояния сервера
+    socket.on('server-status', (status) => {
+      console.log(`Server status received: ${status}`);
+      setServerStatus(status);
+    });
+
+    return () => {
+      socket.off('server-status');
+    };
+  }, []);
+
+  useEffect(() => {
+    let statusCheckInterval = null;
+
+    const checkServerStatus = () => {
+      if (serverStatus === '') {
+        socket.emit('checkServerStatus'); // Emit event to check server status
+        statusCheckInterval = setTimeout(checkServerStatus, 3000); // Check every 3 seconds
+      }
+    };
+
+    if (serverStatus === '') {
+      checkServerStatus(); // Start checking if server status is empty
+    } else if (serverStatus === 'online') {
+      // Stop checking if server status is 'online'
+      if (statusCheckInterval) {
+        clearTimeout(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+    }
+
+    return () => {
+      if (statusCheckInterval) {
+        clearTimeout(statusCheckInterval);
+      }
+    };
+  }, [serverStatus]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
   const handleLogin = () => {
-    if (serverStatus === '') {
+    if (serverStatus === 'offline') {
       setErrorMessage('Server is offline. Please try again later.');
       setTimeout(() => setErrorMessage(''), 3000);
       return;
@@ -198,7 +304,7 @@ const Chat = () => {
             </ul>
           </div>
 
-          {/* Client Respect */}
+          {/* Respect */}
           <div className="flex flex-col items-center justify-center bg-slate-400/10 absolute inset-0">
             <button
               onClick={handleRespect}
@@ -210,7 +316,7 @@ const Chat = () => {
               Total Respect Count: {totalRespect}
             </div>
 
-            {/* Client Status */}
+            {/* Status */}
             <div className="mt-4 flex flex-col items-center">
               <input
                 type="text"
@@ -230,9 +336,8 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Hide all inside until client not logged in */}
       {isLoggedIn && showAnimation && (
-        <div className="absolute top-[30%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="absolute top-[38%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <div className="text-7xl font-bold text-green-500 animate-bounce">
             +1
           </div>
@@ -242,18 +347,16 @@ const Chat = () => {
       <Copyright />
 
       {/* Connection Status */}
-      <div className={`absolute bottom-4 left-4 ${connectionStatus === 'connected' ? 'text-green-500' : 'text-orange-500'}`}>
-        {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'reconnecting' ? '' : 'Reconnecting...'}
+      <div className={`absolute bottom-4 left-4 ${connectionStatus === 'connected' ? 'text-green-500' : 'text-red-500'}`}>
+        {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}
       </div>
 
-      {/* Success Message */}
       {successMessage && (
         <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-lg shadow-lg">
           {successMessage}
         </div>
       )}
 
-      {/* Error Message */}
       {errorMessage && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg">
           {errorMessage}
