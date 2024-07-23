@@ -1,16 +1,16 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import Copyright from '../components/Copyright';
+import Menu from '../components/Menu';
+import playSound from '../components/Audio';
 
-const socket = io('https://socketio-be-bx30.onrender.com');  // https://socketio-be-bx30.onrender.com  //  http://localhost:5000
+const socket = io('http://localhost:3009');
 
 const Chat = () => {
   const [name, setName] = useState('');
   const [status, setStatus] = useState('');
-
   const [serverStatus, setServerStatus] = useState('');
   const [connectionStatus, setConnectionStatus] = useState('');
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [users, setUsers] = useState([]);
   const [totalRespect, setTotalRespect] = useState(0);
@@ -19,20 +19,18 @@ const Chat = () => {
   const [textColorId, setTextColorId] = useState(0);
   const [showAnimation, setShowAnimation] = useState(false);
   const [animationCount, setAnimationCount] = useState(0);
-
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Запуск интервала проверки статуса сервера
   useEffect(() => {
     let updateInterval = null;
 
-    // This is 4 if SERVER IS OFFLINE
     const handleServerStatus = (serverStatus) => {
       console.log(`Server status received: ${serverStatus}`);
       setServerStatus(serverStatus);
       setConnectionStatus('connected');
     };
 
-    // This is 2 if SERVER IS OFFLINE
     const startUpdateInterval = () => {
       updateInterval = setInterval(() => {
         console.log('Attempting to receive server status');
@@ -41,18 +39,14 @@ const Chat = () => {
       }, 1000);
     };
 
-    // This is 3 if SERVER IS OFFLINE
     socket.on('server-status', handleServerStatus);
-
     socket.on('connect_error', () => setConnectionStatus('Connection Error'));
 
-    // This start 1 if SERVER IS OFFLINE
     if (serverStatus === '') {
       startUpdateInterval();
       console.log('Starting update interval..');
     }
 
-    // Очистка интервала и обработчика событий при размонтировании компонента
     return () => {
       if (updateInterval) {
         console.log('clear interval');
@@ -60,10 +54,7 @@ const Chat = () => {
       }
       socket.off('server-status', handleServerStatus);
     };
-  }, [serverStatus]); // Зависимость от serverStatus для перезапуска эффекта
-
-
-
+  }, [serverStatus]);
 
   const handleLogin = () => {
     if (serverStatus === '') {
@@ -130,6 +121,7 @@ const Chat = () => {
     const handleStatusUpdateError = (message) => {
       setErrorMessage(message);
       setTimeout(() => setErrorMessage(''), 3000);
+      playSound('statusError');
     };
 
     socket.on('statusUpdateError', handleStatusUpdateError);
@@ -156,6 +148,8 @@ const Chat = () => {
 
   return (
     <div className="bg-primary/60 h-full flex flex-col items-center relative">
+      {/* Show Shop Menu if open */}
+      {isMenuOpen && <Menu name={name} onClose={() => setIsMenuOpen(false)} />}
 
       {/* Logging */}
       {!isLoggedIn ? (
@@ -192,7 +186,7 @@ const Chat = () => {
             <ul className="pl-4">
               {users.map((user, index) => (
                 <li key={index} className="text-gray-500">
-                  {user.name} [Respects: {user.respectCount}, Status: {user.status}]
+                  {user.name} [Respects: {user.respectCount}, Status: {user.status}, Level: {user.level}, Rank: {user.rank}]
                 </li>
               ))}
             </ul>
@@ -227,6 +221,14 @@ const Chat = () => {
               </button>
             </div>
           </div>
+
+          {/* Menu Button */}
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="absolute bottom-4 right-4 bg-neutral-800 text-white p-4 rounded shadow-lg transition-colors duration-300 hover:bg-neutral-700"
+          >
+            Menu
+          </button>
         </div>
       )}
 
@@ -238,8 +240,6 @@ const Chat = () => {
           </div>
         </div>
       )}
-
-      <Copyright />
 
       {/* Connection Status */}
       <div className={`absolute bottom-4 left-4 ${connectionStatus === 'connected' ? 'text-green-500' : 'text-orange-500'}`}>
