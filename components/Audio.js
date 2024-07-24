@@ -3,6 +3,7 @@ const isClient = typeof window !== 'undefined';
 
 const sounds = isClient ? {
     itemPurchased: new Audio('/sound/2.wav'),
+    itemPurchaseFailed: new Audio('/sound/1.wav'),
     noSelection: new Audio('/sound/1.wav'),
     menuClose: new Audio('/sound/3.wav'),
     vote: new Audio('/golosovanie_cut.mp3'),

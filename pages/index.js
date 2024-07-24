@@ -3,8 +3,9 @@ import io from 'socket.io-client';
 import Copyright from '../components/Copyright';
 import Menu from '../components/Menu';
 import playSound from '../components/Audio';
+import { items as skinItems } from '../components/Images';
 
-const socket = io('http://localhost:3009');
+const socket = io('http://localhost:3009');  // http://localhost:3009
 
 const Chat = () => {
   const [name, setName] = useState('');
@@ -20,6 +21,9 @@ const Chat = () => {
   const [showAnimation, setShowAnimation] = useState(false);
   const [animationCount, setAnimationCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [btnSkins, setBtnSkins] = useState([]);
+  const [currentSkinIndex, setCurrentSkinIndex] = useState(0);
 
   // Запуск интервала проверки статуса сервера
   useEffect(() => {
@@ -146,10 +150,69 @@ const Chat = () => {
     }
   };
 
+  useEffect(() => {
+    socket.on('lastSkin', ({ lastSkin }) => {
+      // Find the index of the lastSkin in btnSkins array
+      const index = btnSkins.findIndex(skin => skin === lastSkin);
+      if (index !== -1) {
+        setCurrentSkinIndex(index);
+        console.log(currentSkinIndex);
+      }
+    });
+
+    return () => {
+      socket.off('lastSkin');
+    };
+  }, [btnSkins]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      logUserItems(name);
+    }
+  }, [isLoggedIn, name, users]);
+
+  const logUserItems = (username) => {
+    if (!username) {
+      console.log('Username is not provided');
+      return;
+    }
+
+    socket.emit('getLastSkin');
+  
+    const user = users.find((user) => user.name === username);
+    if (user) {
+      const items = JSON.parse(user.items || '[]');
+
+      const availableSkins = skinItems
+        .filter(item => items.includes(item.name) && item.name.startsWith('BtnSkin'))
+        .map(item => item.imageUrl);
+      
+      setBtnSkins(availableSkins);
+    } else {
+      console.log(`User ${username} not found`);
+    }
+  };
+
+  const handleNextSkin = () => {
+    setCurrentSkinIndex((prevIndex) => {
+      const newIndex = (prevIndex + 1) % btnSkins.length;
+      socket.emit('setLastSkin', { skin: btnSkins[newIndex] });
+      return newIndex;
+    });
+  };
+
+  const handlePreviousSkin = () => {
+    setCurrentSkinIndex((prevIndex) => {
+      const newIndex = (prevIndex - 1 + btnSkins.length) % btnSkins.length;
+      socket.emit('setLastSkin', { skin: btnSkins[newIndex] });
+      return newIndex;
+    });
+  };
+
   return (
     <div className="bg-primary/60 h-full flex flex-col items-center relative">
-      {/* Show Shop Menu if open */}
-      {isMenuOpen && <Menu name={name} onClose={() => setIsMenuOpen(false)} />}
+      {/* Show Menu if open */}
+      {isMenuOpen && <Menu socket={socket} name={name} onClose={() => setIsMenuOpen(false)} items={skinItems} />}
 
       {/* Logging */}
       {!isLoggedIn ? (
@@ -186,7 +249,8 @@ const Chat = () => {
             <ul className="pl-4">
               {users.map((user, index) => (
                 <li key={index} className="text-gray-500">
-                  {user.name} [Respects: {user.respectCount}, Status: {user.status}, Level: {user.level}, Rank: {user.rank}]
+                  {user.name} [Respects: {user.respectCount}, Status: {user.status},
+                   Level: {user.level}, Experience: {user.experiencePoints}, Rank: {user.rank}, Items: {user.items}]
                 </li>
               ))}
             </ul>
@@ -196,10 +260,26 @@ const Chat = () => {
           <div className="flex flex-col items-center justify-center bg-slate-400/10 absolute inset-0">
             <button
               onClick={handleRespect}
-              className="border-2 shadow-xl border-gray-300 text-gray-300 p-4 rounded transition-colors duration-300 hover:bg-primary/60 hover:text-white"
+              className="border-1 shadow-xl border-gray-500 p-4 rounded transition-colors duration-300 hover:bg-primary/60"
             >
-              Respect
+              <img src={btnSkins[currentSkinIndex]} alt="Respect" className="w-32 h-32" />
             </button>
+
+            <div className="flex mt-4">
+              <button
+                onClick={handlePreviousSkin}
+                className="bg-gray-500 text-white p-2 rounded mr-2 transition-colors duration-300 hover:bg-gray-600"
+              >
+                Previous
+              </button>
+              <button
+                onClick={handleNextSkin}
+                className="bg-gray-500 text-white p-2 rounded transition-colors duration-300 hover:bg-gray-600"
+              >
+                Next
+              </button>
+            </div>
+
             <div className={`text-xl mt-4 ${getColor()}`}>
               Total Respect Count: {totalRespect}
             </div>
