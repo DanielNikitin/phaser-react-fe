@@ -1,0 +1,14 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "last.imagePath": "C:/Users/mbyin/OneDrive/Рабочий стол/front/public/assets/map",
+    "map.height": 100,
+    "map.lastUsedFormat": "json",
+    "map.width": 100,
+    "openFiles": [
+    ],
+    "tileset.embedInMap": true
+}

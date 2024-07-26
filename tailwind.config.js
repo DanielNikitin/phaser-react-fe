@@ -39,9 +39,7 @@ module.exports = {
         test_c2: '#3e3b45',
       },
       backgroundImage: {
-        spc1: 'url("/specialist1.png")',
-        spc2: 'url("/specialist2.png")',
-        site: 'url("/bg.svg")',
+        bg_login: 'url("/")',
       },
       animation: {
         'spin-slow': 'spin 8s linear infinite',
